@@ -56,12 +56,11 @@ ngx_http_read_variable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     if (clcf) {
         clcf->handler = ngx_http_read_variable_handler;
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "clcf %s is not null", clcf->name.data);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "clcf is not null");
     } else {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "clcf %s is null");
     }
     
-
     if (conf) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "cmd name:%s, conf:%d, conf not null", cmd->name.data, cmd->conf);
     } else {
@@ -70,7 +69,6 @@ ngx_http_read_variable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     
     return NGX_CONF_OK;
 }
-
 
 static ngx_int_t
 ngx_http_read_variable_handler(ngx_http_request_t *r)

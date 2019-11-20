@@ -2,6 +2,10 @@
   "files.associations": {
     "stdio.h": "c",
     "event.h": "c",
-    "ngx_config.h": "c"
+    "ngx_config.h": "c",
+    "array": "cpp",
+    "string_view": "cpp",
+    "string": "cpp",
+    "vector": "cpp"
   }
 }
