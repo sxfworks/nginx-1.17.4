@@ -1218,6 +1218,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
         (void) ngx_cpystrn(host, u->host.data, u->host.len + 1);
 
         h = gethostbyname((char *) host);
+        printf("-----------------Host:%s\r\n", host)
 
         ngx_free(host);
 
@@ -1227,7 +1228,7 @@ ngx_inet_resolve_host(ngx_pool_t *pool, ngx_url_t *u)
         }
 
         for (n = 0; h->h_addr_list[n] != NULL; n++) { /* void */ }
-
+        printf("-----------------addr list length:%d\r\n", n)
         /* MP: ngx_shared_palloc() */
 
         for (i = 0; i < n; i++) {
@@ -1270,7 +1271,7 @@ ngx_inet_add_addr(ngx_pool_t *pool, ngx_url_t *u, struct sockaddr *sockaddr,
     struct sockaddr  *sa;
 
     nports = u->last_port ? u->last_port - u->port + 1 : 1;
-
+    printf("-----------------nports:%d\r\n", nports)
     if (u->addrs == NULL) {
         u->addrs = ngx_palloc(pool, total * nports * sizeof(ngx_addr_t));
         if (u->addrs == NULL) {
