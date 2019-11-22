@@ -124,28 +124,86 @@ ngx_http_conf_merge_handler(ngx_http_request_t *r)
     ngx_str_t response = conf->conf_merge;
 
     r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = response.len;
     r->headers_out.content_type = type;
+    r->headers_out.content_length_n = 0;
+
+    ngx_url_t u;
+    u.url = response;
+    u.default_port = 80;
+    if (ngx_parse_url(r->pool, &u) != NGX_OK) {
+        if (u.err) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "url err:%s", u.err);
+        }
+
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    ngx_chain_t *out = NULL;
+    ngx_chain_t *pout = out;
+
+    ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
+    cl->buf = ngx_create_temp_buf(r->pool, u.url.len + 2);
+    ngx_memcpy(cl->buf->pos, u.url.data, u.url.len);
+    cl->buf->last = cl->buf->pos + u.url.len;
+    ngx_memcpy(cl->buf->last, "\r\n", 2);
+    cl->buf->last += 2;
+
+    out = cl;
+    pout = cl;
+    pout->next = NULL;
+
+    u_char *tmp_buf = ngx_palloc(r->pool, 1024);
+    ngx_memset(tmp_buf, 0, 1024);
+    ngx_sprintf(tmp_buf, "default_port:%d\r\nnaddrs:%d\r\n", u.default_port, u.naddrs);
+ 
+    cl = ngx_alloc_chain_link(r->pool);
+    cl->buf = ngx_create_temp_buf(r->pool, ngx_strlen(tmp_buf));
+    if (!cl->buf) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "alloc nil buf");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    ngx_memcpy(cl->buf->pos, tmp_buf, ngx_strlen(tmp_buf));
+    cl->buf->last = cl->buf->pos + ngx_strlen(tmp_buf);
+
+    pout->next = cl;
+    pout = cl;
+    pout->next = NULL;
+   
+    ngx_uint_t i = 0;
+    for (i = 0; i < u.naddrs && i < 5; i++) {
+        ngx_addr_t pa = u.addrs[i];
+        
+        cl = ngx_alloc_chain_link(r->pool);
+        cl->buf = ngx_create_temp_buf(r->pool, pa.name.len + 2);
+        ngx_memcpy(cl->buf->pos, pa.name.data, pa.name.len);
+        cl->buf->last = cl->buf->pos + pa.name.len;
+        ngx_memcpy(cl->buf->last, "\r\n", 2);
+        cl->buf->last += 2;
+        
+        pout->next = cl;
+        pout = cl;
+        pout->next = NULL;
+    }
+
+    if (pout && pout->buf) {
+        pout->buf->last_buf = 1;
+    }
+    
+    for (pout = out; pout; pout = pout->next) {
+        ngx_str_t tmp;
+        tmp.data = ngx_palloc(r->pool, pout->buf->last - pout->buf->pos + 1);
+        ngx_memzero(tmp.data, pout->buf->last - pout->buf->pos + 1);
+        tmp.len = pout->buf->last - pout->buf->pos;
+        ngx_memcpy(tmp.data, pout->buf->pos, tmp.len);
+        r->headers_out.content_length_n += tmp.len;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "content-length [%d] data [%s] len [%d]", r->headers_out.content_length_n, tmp.data, tmp.len);
+    }
 
     rc = ngx_http_send_header(r);
-
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
         return rc;
     }
-
-    ngx_buf_t *b;
-    b = ngx_create_temp_buf(r->pool, response.len);
-    if (b == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-    ngx_memcpy(b->pos, response.data, response.len);
-    b->last = b->pos + response.len;
-    b->last_buf = 1;
-
-    ngx_chain_t out;
-    out.buf = b;
-    out.next = NULL;
-    return ngx_http_output_filter(r, &out);
+    return ngx_http_output_filter(r, out);
 }
 
 
