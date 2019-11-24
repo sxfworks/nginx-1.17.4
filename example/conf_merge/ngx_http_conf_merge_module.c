@@ -128,10 +128,11 @@ ngx_http_conf_merge_handler(ngx_http_request_t *r)
     r->headers_out.content_length_n = 0;
 
     ngx_url_t u;
+    ngx_memset(&u, 0, sizeof(u));
     u.url.data = ngx_palloc(r->pool, response.len + 1);
     u.url.len = response.len + 1;
     ngx_memset(u.url.data, 0, u.url.len);
-    ngx_memcpy(u.url.data, response.data, response.len)
+    ngx_memcpy(u.url.data, response.data, response.len);
     u.default_port = 80;
     if (ngx_parse_url(r->pool, &u) != NGX_OK) {
         if (u.err) {
